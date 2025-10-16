@@ -2,6 +2,9 @@
 name = "cobble"
 version = "0.1.0"
 edition = "2024"
+description = "Assembler/compiler/interpreter for an 8-bit ISA"
+repository = "https://github.com/emil1003/cobble"
+license = "MIT"
 
 [dependencies]
 nom = "8.0.0"
