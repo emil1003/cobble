@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt;
 
 /// Operand types
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,6 +14,12 @@ pub enum Op {
 
     /// Address label
     Label(String),
+}
+
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Op<{}>", self)
+    }
 }
 
 /// Instruction types
@@ -32,9 +38,9 @@ pub enum Instr {
     Jmp { target: Op },
 }
 
-impl Display for Instr {
+impl fmt::Display for Instr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Node<{}>", self)
+        write!(f, "Instr<{}>", self)
     }
 }
 

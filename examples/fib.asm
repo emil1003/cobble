@@ -1,6 +1,6 @@
 ; Basic fibonacci
 start:
-  addi r1, r0, 1    ; a = 1
+  addi r1, r0, 0    ; a = 0
   addi r2, r0, 1    ; b = 1
   addi r4, r0, 5    ; d = 5, n iterations
 loop:

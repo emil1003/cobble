@@ -2,32 +2,66 @@ use thiserror::Error;
 
 use crate::compiler::ast::*;
 
-struct RegFile([u8; 15]);
+pub type InterpreterFlags = (bool, bool);
+
+pub struct InterpreterState {
+    pub pc: u16,
+    pub regs: RegFile,
+    pub flags: InterpreterFlags,
+}
+
+impl Default for InterpreterState {
+    fn default() -> Self {
+        Self {
+            pc: 0u16,
+            regs: RegFile([0; 15]),
+            flags: (true, false),
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum InterpreterError {
+    #[error("invalid instruction: {0}")]
+    InvalidInstruction(Instr),
+
+    #[error("invalid operands: {0}")]
+    InvalidOperands(Instr),
+
+    #[error("invalid register: {0}")]
+    InvalidRegister(u8),
+
+    #[error("attempt to interpret out-of-bounds address {0}")]
+    PCOutOfBounds(u16),
+}
+
+pub struct RegFile(pub [u8; 15]);
 
 impl RegFile {
     #[inline]
-    fn r(&self, reg: u8) -> Result<u8, VMError> {
+    pub fn r(&self, reg: u8) -> Result<u8, InterpreterError> {
         match reg {
             0 => Ok(0),
             1..=15 => Ok(self.0[reg as usize]),
-            _ => Err(VMError::InvalidRegister(reg)),
+            _ => Err(InterpreterError::InvalidRegister(reg)),
         }
     }
 
     #[inline]
-    fn w(&mut self, reg: u8, v: u8) -> Result<(), VMError> {
+    pub fn w(&mut self, reg: u8, v: u8) -> Result<(), InterpreterError> {
         match reg {
             0 => Ok(()),
             1..=15 => {
                 self.0[reg as usize] = v;
                 Ok(())
             }
-            _ => Err(VMError::InvalidRegister(reg)),
+            _ => Err(InterpreterError::InvalidRegister(reg)),
         }
     }
 }
 
 /// Does a wrapping add, with bool set if overflowed
+#[inline]
 fn inbounds_add(a: u8, b: u8) -> (u8, bool) {
     match a.checked_add(b) {
         Some(s) => (s, false),
@@ -35,146 +69,140 @@ fn inbounds_add(a: u8, b: u8) -> (u8, bool) {
     }
 }
 
-#[derive(Debug, Error)]
-pub enum VMError {
-    #[error("invalid operand: {0}")]
-    InvalidOperand(String),
-
-    #[error("invalid register: {0}")]
-    InvalidRegister(u8),
-}
-
-pub struct VM {
-    pc: u16,
-    regs: RegFile,
-    // flags: Vec<bool>,
-}
-
-impl VM {
-    pub fn interpret(&mut self, instr: &Instr) -> Result<Option<u16>, VMError> {
-        let _overflow: bool;
-        let _res: u8;
-
-        match instr {
-            Instr::Label(_) => (),
-            Instr::Halt => {
-                self.pc = u16::MAX;
-            }
-            Instr::Addi { rd, rs1, imm } => match (rd, rs1, imm) {
-                (Op::Reg(rd), Op::Reg(rs1), Op::Imm8(imm)) => {
-                    let a = self.regs.r(*rs1)?;
-                    let (res, _overflow) = inbounds_add(a, *imm as u8);
-                    self.regs.w(*rd, res)?
-                }
-                _ => return Err(VMError::InvalidOperand("".to_string())),
-            },
-            Instr::Mv { rd, rs1 } => match (rd, rs1) {
-                (Op::Reg(rd), Op::Reg(rs1)) => {
-                    let a = self.regs.r(*rs1)?;
-                    self.regs.w(*rd, a)?
-                }
-                _ => return Err(VMError::InvalidOperand("".to_string())),
-            },
-            Instr::Nop => (),
-            Instr::Add { rd, rs1, rs2 } => match (rd, rs1, rs2) {
-                (Op::Reg(rd), Op::Reg(rs1), Op::Reg(rs2)) => {
-                    let a = self.regs.r(*rs1)?;
-                    let b = self.regs.r(*rs2)?;
-                    self.regs.w(*rd, a.wrapping_add(b))?
-                }
-                _ => return Err(VMError::InvalidOperand("".to_string())),
-            },
-            Instr::Sub { rd, rs1, rs2 } => match (rd, rs1, rs2) {
-                (Op::Reg(rd), Op::Reg(rs1), Op::Reg(rs2)) => {
-                    let a = self.regs.r(*rs1)?;
-                    let b = self.regs.r(*rs2)?;
-                    self.regs.w(*rd, a.wrapping_sub(b))?
-                }
-                _ => return Err(VMError::InvalidOperand("".to_string())),
-            },
-            Instr::Jmp { target } => match &target {
-                Op::Imm12(a) => {
-                    self.pc = *a;
-                }
-                Op::Label(_) => {}
-                _ => return Err(VMError::InvalidOperand("".to_string())),
-            },
-        }
-
-        // Interpreted correctly, no jump address
-        Ok(None)
+/// Does a wrapping sub, with bool set if overflowed
+#[inline]
+fn inbounds_sub(a: u8, b: u8) -> (u8, bool) {
+    match a.checked_sub(b) {
+        Some(s) => (s, false),
+        None => (a.wrapping_sub(b), true),
     }
 }
 
-pub fn interpret_program(instrs: &Program) -> Result<VM, VMError> {
-    let mut vm = VM {
-        pc: 0,
-        regs: RegFile([0; 15]),
-    };
-
-    for instr in instrs {
-        if let Some(jmp) = vm.interpret(&instr)? {
-            // Jump to given progam address
-            vm.pc = jmp;
-            continue;
+/// Interprets an instruction, mutating a given VM state in the process.
+/// Returns the next PC address (does not set it), or `None` if the interpreter should halt.
+pub fn interpret(
+    instr: &Instr,
+    state: &mut InterpreterState,
+) -> Result<Option<u16>, InterpreterError> {
+    match instr {
+        Instr::Halt => {
+            state.flags = (true, false);
+            Ok(None)
         }
-
-        // If max instruction address reached, terminate
-        if vm.pc == u16::MAX {
-            return Ok(vm);
+        Instr::Addi {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            imm: Op::Imm8(imm),
+        } => {
+            let a = state.regs.r(*rs1)?;
+            let (res, overflow) = inbounds_add(a, *imm);
+            state.regs.w(*rd, res)?;
+            state.flags = (a.eq(&0u8), overflow);
+            Ok(Some(state.pc + 1))
         }
-
-        // Increment program counter
-        vm.pc += 1;
-    }
-
-    Ok(vm)
-}
-
-#[test]
-fn test_basic_program() {
-    // addi  r1, r0, 2
-    // addi  r2, r0, 2
-    // add   r3, r1, r2
-    // halt
-    let program = vec![
-        Instr::Addi {
-            rd: Op::Reg(1),
-            rs1: Op::Reg(0),
-            imm: Op::Imm8(2),
-        },
-        Instr::Addi {
-            rd: Op::Reg(2),
-            rs1: Op::Reg(0),
-            imm: Op::Imm8(2),
-        },
+        Instr::Mv {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+        } => {
+            let a = state.regs.r(*rs1)?;
+            state.regs.w(*rd, a)?;
+            state.flags = (a.eq(&0u8), false);
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Nop => {
+            state.flags = (true, false);
+            Ok(Some(state.pc + 1))
+        }
         Instr::Add {
-            rd: Op::Reg(3),
-            rs1: Op::Reg(1),
-            rs2: Op::Reg(2),
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            rs2: Op::Reg(rs2),
+        } => {
+            let a = state.regs.r(*rs1)?;
+            let b = state.regs.r(*rs2)?;
+            let (res, overflow) = inbounds_add(a, b);
+            state.regs.w(*rd, res)?;
+            state.flags = (res.eq(&0u8), overflow);
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Sub {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            rs2: Op::Reg(rs2),
+        } => {
+            let a = state.regs.r(*rs1)?;
+            let b = state.regs.r(*rs2)?;
+            let (res, overflow) = inbounds_sub(a, b);
+            state.regs.w(*rd, res)?;
+            state.flags = (res.eq(&0u8), overflow);
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Jmp { target } => match &target {
+            Op::Imm12(imm) => {
+                state.flags = (true, false);
+                Ok(Some(*imm))
+            }
+            Op::Label(_) => {
+                // TODO: Resolve label address
+                let a = 0u16;
+                state.flags = (true, false);
+                Ok(Some(a))
+            }
+            _ => return Err(InterpreterError::InvalidOperands(instr.clone())),
         },
-        Instr::Halt,
-    ];
-
-    let vm = interpret_program(&program).unwrap();
-    // Result in register 3 should be 4
-    assert_eq!(vm.regs.r(3).ok().unwrap(), 4);
+        _ => Err(InterpreterError::InvalidInstruction(instr.clone())),
+    }
 }
 
 #[test]
-fn test_invalids() {
+fn test_interpreter() {
+    let mut state = InterpreterState::default();
+    // Basic instruction
+    let instr = Instr::Addi {
+        rd: Op::Reg(1),
+        rs1: Op::Reg(0),
+        imm: Op::Imm8(2),
+    };
+    assert!(
+        interpret(&instr, &mut state)
+            .ok()
+            .unwrap()
+            .is_some()
+    );
+    assert_eq!(state.regs.r(1).unwrap(), 2);
+
+    // Halting
+    let instr = Instr::Halt;
+    assert!(
+        interpret(&instr, &mut InterpreterState::default())
+            .ok()
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn test_interpreter_errors() {
     // Invalid operand
-    let program = vec![Instr::Mv {
+    let instr = Instr::Mv {
         rd: Op::Reg(0),
         rs1: Op::Imm8(0),
-    }];
-    assert!(interpret_program(&program).err().is_some());
+    };
+    assert!(
+        interpret(&instr, &mut InterpreterState::default())
+            .err()
+            .is_some()
+    );
 
     // Invalid register
-    let program = vec![Instr::Addi {
+    let instr = Instr::Addi {
         rd: Op::Reg(0),
         rs1: Op::Reg(16),
         imm: Op::Imm8(32),
-    }];
-    assert!(interpret_program(&program).err().is_some())
+    };
+    assert!(
+        interpret(&instr, &mut InterpreterState::default())
+            .err()
+            .is_some()
+    );
 }
