@@ -142,12 +142,6 @@ pub fn interpret(
                 state.flags = (true, false);
                 Ok(Some(*imm))
             }
-            Op::Label(_) => {
-                // TODO: Resolve label address
-                let a = 0u16;
-                state.flags = (true, false);
-                Ok(Some(a))
-            }
             _ => return Err(InterpreterError::InvalidOperands(instr.clone())),
         },
         _ => Err(InterpreterError::InvalidInstruction(instr.clone())),

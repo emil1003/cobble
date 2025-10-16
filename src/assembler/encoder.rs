@@ -157,10 +157,6 @@ fn encode(instr: &Instr) -> Result<MachineCode, AsmError> {
                     // Direct address
                     Ok(0x0)
                 }
-                Op::Label(_) => {
-                    // Lookup address in symbol table
-                    Ok(0x0)
-                }
                 _ => Err(AsmError::InvalidOperand("".to_string())),
             }
         }
