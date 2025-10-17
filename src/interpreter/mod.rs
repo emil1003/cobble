@@ -11,10 +11,7 @@ pub fn interpret_program(
     initial_state: Option<InterpreterState>,
 ) -> (Option<InterpreterError>, InterpreterState) {
     // // Use given initial state, or default
-    let mut state = match initial_state {
-        Some(s) => s,
-        None => InterpreterState::default(),
-    };
+    let mut state = initial_state.unwrap_or_default();
 
     let status = loop {
         // Get instruction at given PC

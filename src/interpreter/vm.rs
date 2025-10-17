@@ -142,7 +142,7 @@ pub fn interpret(
                 state.flags = (true, false);
                 Ok(Some(*imm))
             }
-            _ => return Err(InterpreterError::InvalidOperands(instr.clone())),
+            _ => Err(InterpreterError::InvalidOperands(instr.clone())),
         },
         _ => Err(InterpreterError::InvalidInstruction(instr.clone())),
     }
@@ -157,12 +157,7 @@ fn test_interpreter() {
         rs1: Op::Reg(0),
         imm: Op::Imm8(2),
     };
-    assert!(
-        interpret(&instr, &mut state)
-            .ok()
-            .unwrap()
-            .is_some()
-    );
+    assert!(interpret(&instr, &mut state).ok().unwrap().is_some());
     assert_eq!(state.regs.r(1).unwrap(), 2);
 
     // Halting

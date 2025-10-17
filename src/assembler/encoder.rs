@@ -130,9 +130,9 @@ fn encode(instr: &Instr) -> Result<MachineCode, AsmError> {
         Instr::Halt => Ok(0),
         Instr::Addi { rd, rs1, imm } => match (rd, rs1, imm) {
             (Op::Reg(rd), Op::Reg(rs1), Op::Imm8(imm)) => {
-                Ok(make_instr!(0b000001, rd => *rd, rs1 => *rs1, imm8 => *imm as u8))
+                Ok(make_instr!(0b000001, rd => *rd, rs1 => *rs1, imm8 => *imm))
             }
-            _ => return Err(AsmError::InvalidOperand("".to_string())),
+            _ => Err(AsmError::InvalidOperand("".to_string())),
         },
         Instr::Mv { rd, rs1 } => match (rd, rs1) {
             (Op::Reg(rd), Op::Reg(rs1)) => Ok(make_instr!(0b000001, rd => *rd, rs1 => *rs1)),

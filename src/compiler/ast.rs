@@ -18,7 +18,12 @@ pub enum Op {
 
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Op<{}>", self)
+        match self {
+            Self::Reg(r) => write!(f, "r{}", r),
+            Self::Imm8(v) => write!(f, "{}", v),
+            Self::Imm12(v) => write!(f, "{}", v),
+            Self::Label(l) => write!(f, "<{}>", l),
+        }
     }
 }
 
@@ -40,7 +45,16 @@ pub enum Instr {
 
 impl fmt::Display for Instr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Instr<{}>", self)
+        match self {
+            Self::Label(l) => write!(f, "{}:", l),
+            Self::Halt => write!(f, "halt"),
+            Self::Addi { rd, rs1, imm } => write!(f, "addi {}, {}, {}", rd, rs1, imm),
+            Self::Mv { rd, rs1 } => write!(f, "mv {}, {}", rd, rs1),
+            Self::Nop => write!(f, "nop"),
+            Self::Add { rd, rs1, rs2 } => write!(f, "add {}, {}, {}", rd, rs1, rs2),
+            Self::Sub { rd, rs1, rs2 } => write!(f, "sub {}, {}, {}", rd, rs1, rs2),
+            Self::Jmp { target } => write!(f, "jmp {}", target),
+        }
     }
 }
 

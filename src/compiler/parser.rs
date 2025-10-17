@@ -15,7 +15,7 @@ fn parse_u16(input: &str) -> IResult<&str, u16> {
         map_res(preceded(tag("0x"), hex_digit1), |hex| {
             u16::from_str_radix(hex, 16)
         }),
-        map_res(digit1, |digits| u16::from_str(digits)),
+        map_res(digit1, u16::from_str),
     ))
     .parse(input)
 }
@@ -26,19 +26,19 @@ fn parse_u8(input: &str) -> IResult<&str, u8> {
         map_res(preceded(tag("0x"), hex_digit1), |hex| {
             u8::from_str_radix(hex, 16)
         }),
-        map_res(digit1, |digits| u8::from_str(digits)),
+        map_res(digit1, u8::from_str),
     ))
     .parse(input)
 }
 
 /// Parse a register name like "r" → Operand::Reg(2)
 fn parse_reg(input: &str) -> IResult<&str, Op> {
-    map(preceded(char('r'), parse_u8), |val| Op::Reg(val)).parse(input)
+    map(preceded(char('r'), parse_u8), Op::Reg).parse(input)
 }
 
 /// Parse an 8-bit immediate like "42" → Operand::Imm8(42)
 fn parse_imm8(input: &str) -> IResult<&str, Op> {
-    map(parse_u8, |v: u8| Op::Imm8(v)).parse(input)
+    map(parse_u8, Op::Imm8).parse(input)
 }
 
 /// Parse a 12-bit immediate like "42" → Operand::Imm12(42)
@@ -141,11 +141,7 @@ pub fn parse_program(src: &str) -> Result<Program, String> {
         match parse_line(line) {
             Ok((_, mut instr)) => program.append(&mut instr),
             Err(s) => {
-                return Err(format!(
-                    "Parse error on line {}: {}",
-                    lineno + 1,
-                    s.to_string()
-                ));
+                return Err(format!("Parse error on line {}: {}", lineno + 1, s));
             }
         }
     }
@@ -156,11 +152,11 @@ pub fn parse_program(src: &str) -> Result<Program, String> {
 #[test]
 fn test_parser() {
     // Simple Halt
-    let mut input = "halt";
+    let input = "halt";
     assert_eq!(parse_line(input).ok().unwrap(), ("", vec![Instr::Halt]));
 
     // Basic addi r0, r0, 0
-    input = "addi r0, r0, 0";
+    let input = "addi r0, r0, 0";
     assert_eq!(
         parse_line(input).ok().unwrap(),
         (
@@ -174,18 +170,18 @@ fn test_parser() {
     );
 
     // Malformed mv
-    input = "mv r0, 0";
+    let input = "mv r0, 0";
     assert!(parse_line(input).err().is_some());
 
     // Label
-    input = "loop:";
+    let input = "loop:";
     assert_eq!(
         parse_line(input).ok().unwrap(),
         ("", vec![Instr::Label("loop".to_string())])
     );
 
     // Jump to label
-    input = "jmp loop";
+    let input = "jmp loop";
     assert_eq!(
         parse_line(input).ok().unwrap(),
         (
