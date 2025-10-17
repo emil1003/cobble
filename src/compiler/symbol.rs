@@ -11,18 +11,18 @@ pub fn strip_symbols(prg: &Program) -> (Program, SymbolTable) {
     let mut symbols: SymbolTable = HashMap::default();
     let mut pc = 0u16;
 
-    prg.iter().for_each(|instr| {
+    for instr in prg {
         match instr {
             Instr::Label(label) => {
                 // Record symbol
                 symbols.insert(label.to_string(), pc);
             }
-            other => {
-                out.push(other.clone());
+            _ => {
+                out.push(instr.clone());
                 pc += 1;
             }
         }
-    });
+    }
 
     (out, symbols)
 }
@@ -62,22 +62,34 @@ pub fn replace_symbols(prg: &Program, symbols: &SymbolTable) -> Result<Program, 
 
 #[test]
 fn test_strip_symbols() {
-    let prg = vec![Instr::Label("start".to_string())];
+    let prg = vec![Instr::Label("start".to_string()), Instr::Halt];
 
     let (stripped, symbols) = strip_symbols(&prg);
-    assert_eq!(stripped.len(), 0);
+    assert_eq!(stripped.len(), 1);
     assert_eq!(symbols.get("start").unwrap(), &0u16);
 }
 
 #[test]
 fn test_replace_symbols() {
-    let prg = vec![Instr::Jmp {
-        target: Op::Label("start".to_string()),
-    }];
+    let prg = vec![
+        Instr::Jmp {
+            target: Op::Label("start".to_string()),
+        },
+        Instr::Halt,
+    ];
     let mut symbols: SymbolTable = HashMap::default();
     symbols.insert("start".to_string(), 0);
 
     let replaced = replace_symbols(&prg, &symbols).ok().unwrap();
 
-    assert_eq!(replaced[0], Instr::Jmp { target: Op::Imm12(0) });
+    assert_eq!(
+        replaced[0],
+        Instr::Jmp {
+            target: Op::Imm12(0)
+        }
+    );
+
+    // Unstripped program
+    let prg = vec![Instr::Label("start".to_string()), Instr::Halt];
+    assert!(replace_symbols(&prg, &symbols).err().is_some());
 }
