@@ -7,5 +7,6 @@ repository = "https://github.com/emil1003/cobble"
 license = "MIT"
 
 [dependencies]
+clap = { version = "4.5.49", features = ["derive"] }
 nom = "8.0.0"
 thiserror = "2.0.17"
