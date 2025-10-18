@@ -116,6 +116,68 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
                 .parse(input)?;
             Ok((input, vec![Instr::Sub { rd, rs1, rs2 }]))
         }
+        "NOT" => {
+            let (input, (rd, rs1)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::Not { rd, rs1 }]))
+        }
+        "AND" => {
+            let (input, (rd, rs1, rs2)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+                preceded((char(','), multispace0), parse_reg),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::And { rd, rs1, rs2 }]))
+        }
+        "OR" => {
+            let (input, (rd, rs1, rs2)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+                preceded((char(','), multispace0), parse_reg),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::Or { rd, rs1, rs2 }]))
+        }
+        "XOR" => {
+            let (input, (rd, rs1, rs2)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+                preceded((char(','), multispace0), parse_reg),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::Xor { rd, rs1, rs2 }]))
+        }
+        "ANDI" => {
+            let (input, (rd, rs1, imm)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+                preceded((char(','), multispace0), parse_imm8),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::Andi { rd, rs1, imm }]))
+        }
+        "ORI" => {
+            let (input, (rd, rs1, imm)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+                preceded((char(','), multispace0), parse_imm8),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::Ori { rd, rs1, imm }]))
+        }
+        "XORI" => {
+            let (input, (rd, rs1, imm)) = (
+                parse_reg,
+                preceded((char(','), multispace0), parse_reg),
+                preceded((char(','), multispace0), parse_imm8),
+            )
+                .parse(input)?;
+            Ok((input, vec![Instr::Xori { rd, rs1, imm }]))
+        }
         "JMP" => {
             let (input, target) = alt((parse_label_ref, parse_imm12)).parse(input)?;
             Ok((input, vec![Instr::Jmp { target }]))

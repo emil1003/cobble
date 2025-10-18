@@ -102,6 +102,9 @@ pub type MachineCode = u32;
 
 #[derive(Debug, Error)]
 pub enum AsmError {
+    #[error("unknown instruction: {0}")]
+    UnknownInstruction(Instr),
+
     #[error("label not found: {0}")]
     UndefinedLabel(String),
 
@@ -160,6 +163,7 @@ fn encode(instr: &Instr) -> Result<MachineCode, AsmError> {
                 _ => Err(AsmError::InvalidOperand("".to_string())),
             }
         }
+        _ => Err(AsmError::UnknownInstruction(instr.clone())),
     }
 }
 

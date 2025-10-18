@@ -2,7 +2,20 @@ use thiserror::Error;
 
 use crate::compiler::ast::*;
 
-pub type InterpreterFlags = (bool, bool);
+pub struct InterpreterFlags {
+    zero: bool,
+    overflow: bool,
+}
+
+impl From<(bool, bool)> for InterpreterFlags {
+    #[inline]
+    fn from(value: (bool, bool)) -> Self {
+        Self {
+            zero: value.0,
+            overflow: value.1,
+        }
+    }
+}
 
 pub struct InterpreterState {
     pub pc: u16,
@@ -15,7 +28,7 @@ impl Default for InterpreterState {
         Self {
             pc: 0u16,
             regs: RegFile([0; 15]),
-            flags: (true, false),
+            flags: (true, false).into(),
         }
     }
 }
@@ -86,7 +99,7 @@ pub fn interpret(
 ) -> Result<Option<u16>, InterpreterError> {
     match instr {
         Instr::Halt => {
-            state.flags = (true, false);
+            state.flags = (true, false).into();
             Ok(None)
         }
         Instr::Addi {
@@ -97,7 +110,7 @@ pub fn interpret(
             let a = state.regs.r(*rs1)?;
             let (res, overflow) = inbounds_add(a, *imm);
             state.regs.w(*rd, res)?;
-            state.flags = (a.eq(&0u8), overflow);
+            state.flags = (a.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
         }
         Instr::Mv {
@@ -106,11 +119,11 @@ pub fn interpret(
         } => {
             let a = state.regs.r(*rs1)?;
             state.regs.w(*rd, a)?;
-            state.flags = (a.eq(&0u8), false);
+            state.flags = (a.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
         Instr::Nop => {
-            state.flags = (true, false);
+            state.flags = (true, false).into();
             Ok(Some(state.pc + 1))
         }
         Instr::Add {
@@ -122,7 +135,7 @@ pub fn interpret(
             let b = state.regs.r(*rs2)?;
             let (res, overflow) = inbounds_add(a, b);
             state.regs.w(*rd, res)?;
-            state.flags = (res.eq(&0u8), overflow);
+            state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
         }
         Instr::Sub {
@@ -134,16 +147,45 @@ pub fn interpret(
             let b = state.regs.r(*rs2)?;
             let (res, overflow) = inbounds_sub(a, b);
             state.regs.w(*rd, res)?;
-            state.flags = (res.eq(&0u8), overflow);
+            state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Jmp { target } => match &target {
+        Instr::Not {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+        } => {
+            let a = state.regs.r(*rs1)?;
+            let res = !a;
+            state.regs.w(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Jmp { target } => match target {
             Op::Imm12(imm) => {
-                state.flags = (true, false);
+                // Flags are the same as res = 0
+                state.flags = (true, false).into();
                 Ok(Some(*imm))
             }
             _ => Err(InterpreterError::InvalidOperands(instr.clone())),
         },
+        Instr::Bz {
+            target: Op::Imm12(imm),
+        } => {
+            if state.flags.zero {
+                Ok(Some(*imm))
+            } else {
+                Ok(Some(state.pc + 1))
+            }
+        }
+        Instr::Bnz {
+            target: Op::Imm12(imm),
+        } => {
+            if state.flags.zero {
+                Ok(Some(state.pc + 1))
+            } else {
+                Ok(Some(*imm))
+            }
+        }
         _ => Err(InterpreterError::InvalidInstruction(instr.clone())),
     }
 }
@@ -168,6 +210,12 @@ fn test_interpreter() {
             .unwrap()
             .is_none()
     );
+
+    // Branching
+    let instr = Instr::Jmp {
+        target: Op::Imm12(0xf),
+    };
+    assert_eq!(interpret(&instr, &mut state).ok().unwrap(), Some(0xf));
 }
 
 #[test]
