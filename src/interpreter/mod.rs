@@ -9,7 +9,7 @@ use vm::*;
 pub fn interpret_program(
     prg: Program,
     initial_state: Option<InterpreterState>,
-) -> (Option<InterpreterError>, InterpreterState) {
+) -> (Result<(), InterpreterError>, InterpreterState) {
     // // Use given initial state, or default
     let mut state = initial_state.unwrap_or_default();
 
@@ -39,7 +39,13 @@ pub fn interpret_program(
     };
 
     // Return state
-    (status, state)
+    (
+        match status {
+            Some(e) => Err(e),
+            None => Ok(()),
+        },
+        state,
+    )
 }
 
 #[test]
@@ -64,6 +70,19 @@ fn test_interpret_sample_program() {
         Instr::Halt,
     ];
     let (status, state) = interpret_program(prg, None);
-    assert!(status.is_none());
+    assert!(status.is_ok());
     assert_eq!(state.regs.r(3).unwrap(), 4);
+}
+
+#[test]
+fn test_program_error() {
+    // Instruction out-of-bounds
+    let prg = vec![
+        Instr::Jmp {
+            target: Op::Imm12(42),
+        },
+        Instr::Halt,
+    ];
+    let (status, _state) = interpret_program(prg, None);
+    assert!(status.is_err());
 }
