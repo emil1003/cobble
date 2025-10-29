@@ -117,11 +117,8 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
             Ok((input, vec![Instr::Sub { rd, rs1, rs2 }]))
         }
         "NOT" => {
-            let (input, (rd, rs1)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-            )
-                .parse(input)?;
+            let (input, (rd, rs1)) =
+                (parse_reg, preceded((char(','), multispace0), parse_reg)).parse(input)?;
             Ok((input, vec![Instr::Not { rd, rs1 }]))
         }
         "AND" => {
@@ -178,9 +175,17 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
                 .parse(input)?;
             Ok((input, vec![Instr::Xori { rd, rs1, imm }]))
         }
-        "JMP" => {
+        "JMP" | "BZ" | "BNZ" => {
             let (input, target) = alt((parse_label_ref, parse_imm12)).parse(input)?;
-            Ok((input, vec![Instr::Jmp { target }]))
+            Ok((
+                input,
+                vec![match opcode {
+                    "JMP" => Instr::Jmp { target },
+                    "BZ" => Instr::Bz { target },
+                    "BNZ" => Instr::Bnz { target },
+                    _ => unreachable!(),
+                }],
+            ))
         }
         _ => Err(nom::Err::Error(nom::error::Error::new(
             opcode,
