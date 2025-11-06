@@ -175,11 +175,11 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
                 .parse(input)?;
             Ok((input, vec![Instr::Xori { rd, rs1, imm }]))
         }
-        "JMP" | "BZ" | "BNZ" => {
+        op @ ("JMP" | "BZ" | "BNZ") => {
             let (input, target) = alt((parse_label_ref, parse_imm12)).parse(input)?;
             Ok((
                 input,
-                vec![match opcode {
+                vec![match op {
                     "JMP" => Instr::Jmp { target },
                     "BZ" => Instr::Bz { target },
                     "BNZ" => Instr::Bnz { target },
