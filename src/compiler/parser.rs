@@ -68,7 +68,6 @@ fn parse_label(input: &str) -> IResult<&str, &str> {
 }
 
 /// Parse a full instruction line.
-///   e.g. “addi x4, x1, 5”
 fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
     // Consume leading whitespace
     let (input, _) = multispace0(input)?;
@@ -83,98 +82,60 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
 
     match opcode.to_uppercase().as_str() {
         "HALT" => Ok((input, vec![Instr::Halt])),
-        "ADDI" => {
-            let (input, (rd, rs1, imm)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_imm8),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Addi { rd, rs1, imm }]))
-        }
-        "MV" => {
-            let (input, (rd, rs1)) =
-                (parse_reg, preceded((char(','), multispace0), parse_reg)).parse(input)?;
-            Ok((input, vec![Instr::Mv { rd, rs1 }]))
-        }
         "NOP" => Ok((input, vec![Instr::Nop])),
-        "ADD" => {
-            let (input, (rd, rs1, rs2)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_reg),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Add { rd, rs1, rs2 }]))
-        }
-        "SUB" => {
-            let (input, (rd, rs1, rs2)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_reg),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Sub { rd, rs1, rs2 }]))
-        }
-        "NOT" => {
+        // Unary ops
+        op @ ("MV" | "NOT") => {
             let (input, (rd, rs1)) =
                 (parse_reg, preceded((char(','), multispace0), parse_reg)).parse(input)?;
-            Ok((input, vec![Instr::Not { rd, rs1 }]))
+            Ok((
+                input,
+                vec![match op {
+                    "MV" => Instr::Mv { rd, rs1 },
+                    "NOT" => Instr::Not { rd, rs1 },
+                    _ => unreachable!(),
+                }],
+            ))
         }
-        "AND" => {
+        // Binary ops
+        op @ ("ADD" | "SUB" | "AND" | "OR" | "XOR") => {
             let (input, (rd, rs1, rs2)) = (
                 parse_reg,
                 preceded((char(','), multispace0), parse_reg),
                 preceded((char(','), multispace0), parse_reg),
             )
                 .parse(input)?;
-            Ok((input, vec![Instr::And { rd, rs1, rs2 }]))
+            Ok((
+                input,
+                vec![match op {
+                    "ADD" => Instr::Add { rd, rs1, rs2 },
+                    "SUB" => Instr::Sub { rd, rs1, rs2 },
+                    "AND" => Instr::And { rd, rs1, rs2 },
+                    "OR" => Instr::Or { rd, rs1, rs2 },
+                    "XOR" => Instr::Xor { rd, rs1, rs2 },
+                    _ => unreachable!(),
+                }],
+            ))
         }
-        "OR" => {
-            let (input, (rd, rs1, rs2)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_reg),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Or { rd, rs1, rs2 }]))
-        }
-        "XOR" => {
-            let (input, (rd, rs1, rs2)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_reg),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Xor { rd, rs1, rs2 }]))
-        }
-        "ANDI" => {
+        // Immediate ops
+        op @ ("ADDI" | "ANDI" | "ORI" | "XORI") => {
             let (input, (rd, rs1, imm)) = (
                 parse_reg,
                 preceded((char(','), multispace0), parse_reg),
                 preceded((char(','), multispace0), parse_imm8),
             )
                 .parse(input)?;
-            Ok((input, vec![Instr::Andi { rd, rs1, imm }]))
+            Ok((
+                input,
+                vec![match op {
+                    "ADDI" => Instr::Addi { rd, rs1, imm },
+                    "ANDI" => Instr::Andi { rd, rs1, imm },
+                    "ORI" => Instr::Ori { rd, rs1, imm },
+                    "XORI" => Instr::Xori { rd, rs1, imm },
+                    _ => unreachable!(),
+                }],
+            ))
         }
-        "ORI" => {
-            let (input, (rd, rs1, imm)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_imm8),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Ori { rd, rs1, imm }]))
-        }
-        "XORI" => {
-            let (input, (rd, rs1, imm)) = (
-                parse_reg,
-                preceded((char(','), multispace0), parse_reg),
-                preceded((char(','), multispace0), parse_imm8),
-            )
-                .parse(input)?;
-            Ok((input, vec![Instr::Xori { rd, rs1, imm }]))
-        }
+        // Jump ops
         op @ ("JMP" | "BZ" | "BNZ") => {
             let (input, target) = alt((parse_label_ref, parse_imm12)).parse(input)?;
             Ok((
