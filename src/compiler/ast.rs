@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::*;
 
 /// Operand types
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub enum Op {
     Label(String),
 }
 
-impl fmt::Display for Op {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Op {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Self::Reg(r) => write!(f, "r{}", r),
             Self::Imm8(v) => write!(f, "{}", v),
@@ -30,66 +30,74 @@ impl fmt::Display for Op {
 /// Instruction types
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instr {
+    // Meta operations
+    /// Symbol placeholder (to be stripped)
     Label(String),
-
+    /// Terminate program
     Halt,
-    Addi { rd: Op, rs1: Op, imm: Op },
-    Mv { rd: Op, rs1: Op },
+    /// No operation
     Nop,
-
-    Add { rd: Op, rs1: Op, rs2: Op },
-    Sub { rd: Op, rs1: Op, rs2: Op },
-
-    /// Bitwise NOT (unary)
+    // Unary operations
+    /// Move (rd = rs1)
+    Mv { rd: Op, rs1: Op },
+    /// Bitwise NOT (rd = !rs1)
     Not { rd: Op, rs1: Op },
-    /// Bitwise AND
+    // Binary operations
+    /// Addition (rd = rs1 + rs2)
+    Add { rd: Op, rs1: Op, rs2: Op },
+    /// Subtraction (rd = rs1 - rs2)
+    Sub { rd: Op, rs1: Op, rs2: Op },
+    /// Bitwise AND (rd = rs1 & rs2)
     And { rd: Op, rs1: Op, rs2: Op },
-    /// Bitwise OR
+    /// Bitwise OR (rd = rs1 | rs2)
     Or { rd: Op, rs1: Op, rs2: Op },
-    /// Bitwise XOR
+    /// Bitwise XOR (rd = rs1 ^ rs2)
     Xor { rd: Op, rs1: Op, rs2: Op },
-
-    /// AND with an immediate value
+    // Immediate operations
+    /// Immediate addition (rd = rs1 + imm)
+    Addi { rd: Op, rs1: Op, imm: Op },
+    /// Immediate bitwise AND (rd = rs1 & imm)
     Andi { rd: Op, rs1: Op, imm: Op },
-    /// OR with an immediate value
+    /// Immediate bitwise OR (rd = rs1 | imm)
     Ori { rd: Op, rs1: Op, imm: Op },
-    /// XOR with an immediate value
+    /// Immediate bitwise XOR (rd = rs1 ^ imm)
     Xori { rd: Op, rs1: Op, imm: Op },
-
-    /// Jump to target address (imm12)
-    Jmp { target: Op },
-    /// Jump to target address (imm12) if flag zero
-    Bz { target: Op },
-    /// Jump to target address (imm12) if not flag zero
-    Bnz { target: Op },
+    // Branching operations
+    /// Jump to address (pc = imm)
+    Jmp { imm: Op },
+    /// Jump to address (pc = imm) if flag zero
+    Bz { imm: Op },
+    /// Jump to address (pc = imm) if not flag zero
+    Bnz { imm: Op },
 }
 
-impl fmt::Display for Instr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for Instr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Self::Label(l) => write!(f, "{}:", l),
-
-            Self::Halt => write!(f, "halt"),
-            Self::Addi { rd, rs1, imm } => write!(f, "addi {}, {}, {}", rd, rs1, imm),
-            Self::Mv { rd, rs1 } => write!(f, "mv {}, {}", rd, rs1),
             Self::Nop => write!(f, "nop"),
+            Self::Halt => write!(f, "halt"),
+
+            Self::Mv { rd, rs1 } => write!(f, "mv {}, {}", rd, rs1),
+            Self::Not { rd, rs1 } => write!(f, "not {}, {}", rd, rs1),
+
             Self::Add { rd, rs1, rs2 } => write!(f, "add {}, {}, {}", rd, rs1, rs2),
             Self::Sub { rd, rs1, rs2 } => write!(f, "sub {}, {}, {}", rd, rs1, rs2),
-            
-            Self::Not { rd, rs1 } => write!(f, "not {}, {}", rd, rs1),
             Self::And { rd, rs1, rs2 } => write!(f, "and {}, {}, {}", rd, rs1, rs2),
             Self::Or { rd, rs1, rs2 } => write!(f, "or {}, {}, {}", rd, rs1, rs2),
             Self::Xor { rd, rs1, rs2 } => write!(f, "xor {}, {}, {}", rd, rs1, rs2),
 
+            Self::Addi { rd, rs1, imm } => write!(f, "addi {}, {}, {}", rd, rs1, imm),
             Self::Andi { rd, rs1, imm } => write!(f, "andi {}, {}, {}", rd, rs1, imm),
             Self::Ori { rd, rs1, imm } => write!(f, "ori {}, {}, {}", rd, rs1, imm),
             Self::Xori { rd, rs1, imm } => write!(f, "xori {}, {}, {}", rd, rs1, imm),
 
-            Self::Jmp { target } => write!(f, "jmp {}", target),
-            Self::Bz { target } => write!(f, "bz {}", target),
-            Self::Bnz { target } => write!(f, "bnz {}", target),
+            Self::Jmp { imm } => write!(f, "jmp {}", imm),
+            Self::Bz { imm } => write!(f, "bz {}", imm),
+            Self::Bnz { imm } => write!(f, "bnz {}", imm),
         }
     }
 }
 
+/// The program type (being a list of instructions)
 pub type Program = Vec<Instr>;

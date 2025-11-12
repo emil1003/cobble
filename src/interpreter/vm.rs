@@ -4,7 +4,7 @@ use crate::compiler::ast::*;
 
 pub struct InterpreterFlags {
     zero: bool,
-    overflow: bool,
+    _overflow: bool,
 }
 
 impl From<(bool, bool)> for InterpreterFlags {
@@ -12,7 +12,7 @@ impl From<(bool, bool)> for InterpreterFlags {
     fn from(value: (bool, bool)) -> Self {
         Self {
             zero: value.0,
-            overflow: value.1,
+            _overflow: value.1,
         }
     }
 }
@@ -35,16 +35,16 @@ impl Default for InterpreterState {
 
 #[derive(Debug, Error)]
 pub enum InterpreterError {
-    #[error("invalid instruction: {0}")]
+    #[error("Invalid instruction: {0}")]
     InvalidInstruction(Instr),
 
-    #[error("invalid operands: {0}")]
+    #[error("Invalid operands: {0}")]
     InvalidOperands(Instr),
 
-    #[error("invalid register: {0}")]
+    #[error("Invalid register: {0}")]
     InvalidRegister(u8),
 
-    #[error("attempt to interpret out-of-bounds address {0}")]
+    #[error("Attempt to interpret out-of-bounds address {0}")]
     PCOutOfBounds(u16),
 }
 
@@ -160,7 +160,7 @@ pub fn interpret(
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Jmp { target } => match target {
+        Instr::Jmp { imm: target } => match target {
             Op::Imm12(imm) => {
                 // Flags are the same as res = 0
                 state.flags = (true, false).into();
@@ -169,7 +169,7 @@ pub fn interpret(
             _ => Err(InterpreterError::InvalidOperands(instr.clone())),
         },
         Instr::Bz {
-            target: Op::Imm12(imm),
+            imm: Op::Imm12(imm),
         } => {
             if state.flags.zero {
                 Ok(Some(*imm))
@@ -178,7 +178,7 @@ pub fn interpret(
             }
         }
         Instr::Bnz {
-            target: Op::Imm12(imm),
+            imm: Op::Imm12(imm),
         } => {
             if state.flags.zero {
                 Ok(Some(state.pc + 1))
@@ -213,7 +213,7 @@ fn test_interpreter() {
 
     // Branching
     let instr = Instr::Jmp {
-        target: Op::Imm12(0xf),
+        imm: Op::Imm12(0xf),
     };
     assert_eq!(interpret(&instr, &mut state).ok().unwrap(), Some(0xf));
 }

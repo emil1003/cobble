@@ -77,12 +77,7 @@ fn test_interpret_sample_program() {
 #[test]
 fn test_program_error() {
     // Instruction out-of-bounds
-    let prg = vec![
-        Instr::Jmp {
-            target: Op::Imm12(42),
-        },
-        Instr::Halt,
-    ];
+    let prg = vec![Instr::Jmp { imm: Op::Imm12(42) }, Instr::Halt];
     let (status, _state) = interpret_program(prg, None);
     assert!(status.is_err());
 }

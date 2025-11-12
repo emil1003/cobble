@@ -154,7 +154,7 @@ fn encode(instr: &Instr) -> Result<MachineCode, AsmError> {
             }
             _ => Err(AsmError::InvalidOperand("".to_string())),
         },
-        Instr::Jmp { target } => {
+        Instr::Jmp { imm: target } => {
             match &target {
                 Op::Imm12(_) => {
                     // Direct address

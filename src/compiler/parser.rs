@@ -8,6 +8,13 @@ use nom::{
     sequence::{preceded, terminated},
 };
 use std::str::FromStr;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ParserError {
+    #[error("Parse error on line {0}: {1}")]
+    Error(usize, String),
+}
 
 /// Parse a u16 numerical value, hex or decimal
 fn parse_u16(input: &str) -> IResult<&str, u16> {
@@ -31,7 +38,7 @@ fn parse_u8(input: &str) -> IResult<&str, u8> {
     .parse(input)
 }
 
-/// Parse a register name like "r" → Operand::Reg(2)
+/// Parse a register name like "r2" → Operand::Reg(2)
 fn parse_reg(input: &str) -> IResult<&str, Op> {
     map(preceded(char('r'), parse_u8), Op::Reg).parse(input)
 }
@@ -57,17 +64,18 @@ fn parse_imm12(input: &str) -> IResult<&str, Op> {
     .parse(input)
 }
 
-/// Parse a label reference like “LOOP”
+/// Parse a label reference like "loop"
 fn parse_label_ref(input: &str) -> IResult<&str, Op> {
     map(alpha1, |s: &str| Op::Label(s.to_string())).parse(input)
 }
 
+/// Parse a label statement, i.e. "start:"
 fn parse_label(input: &str) -> IResult<&str, &str> {
     let (rest, label) = terminated(alpha1, char(':')).parse(input)?;
     Ok((rest, label))
 }
 
-/// Parse a full instruction line.
+/// Parse a single instruction line into AST.
 fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
     // Consume leading whitespace
     let (input, _) = multispace0(input)?;
@@ -137,13 +145,13 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
         }
         // Jump ops
         op @ ("JMP" | "BZ" | "BNZ") => {
-            let (input, target) = alt((parse_label_ref, parse_imm12)).parse(input)?;
+            let (input, imm) = alt((parse_label_ref, parse_imm12)).parse(input)?;
             Ok((
                 input,
                 vec![match op {
-                    "JMP" => Instr::Jmp { target },
-                    "BZ" => Instr::Bz { target },
-                    "BNZ" => Instr::Bnz { target },
+                    "JMP" => Instr::Jmp { imm },
+                    "BZ" => Instr::Bz { imm },
+                    "BNZ" => Instr::Bnz { imm },
                     _ => unreachable!(),
                 }],
             ))
@@ -155,12 +163,12 @@ fn parse_line(input: &str) -> IResult<&str, Vec<Instr>> {
     }
 }
 
-/// Parse an entire file (separated by newlines).
-pub fn parse_program(src: &str) -> Result<Program, String> {
+/// Parse an entire program, given as a string with newlines.
+pub fn parse_program(src: &str) -> Result<Program, ParserError> {
     let mut program = Vec::new();
 
-    for (lineno, line) in src.lines().enumerate() {
-        // skip blank or comment lines
+    for (n, line) in src.lines().enumerate() {
+        // Skip blank or comment lines
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with(';') {
             continue;
@@ -168,8 +176,8 @@ pub fn parse_program(src: &str) -> Result<Program, String> {
 
         match parse_line(line) {
             Ok((_, mut instr)) => program.append(&mut instr),
-            Err(s) => {
-                return Err(format!("Parse error on line {}: {}", lineno + 1, s));
+            Err(e) => {
+                return Err(ParserError::Error(n + 1, e.to_string()));
             }
         }
     }
@@ -215,7 +223,7 @@ fn test_parser() {
         (
             "",
             vec![Instr::Jmp {
-                target: Op::Label("loop".to_string())
+                imm: Op::Label("loop".to_string())
             }]
         )
     )
