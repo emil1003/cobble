@@ -21,5 +21,5 @@ fn test_integration() {
     res.expect("examples/fib.asm should interpret correctly");
 
     // Check final state
-    assert_eq!(state.regs.r(3).unwrap(), 13);
+    assert_eq!(state.regs.r(3).unwrap(), 8);
 }

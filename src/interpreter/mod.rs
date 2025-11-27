@@ -1,6 +1,7 @@
+pub mod state;
 pub mod vm;
 
-use crate::compiler::ast::*;
+use crate::{compiler::ast::*, interpreter::state::State};
 use vm::*;
 
 /// Interprets a given program, then returns a tuple of
@@ -8,8 +9,8 @@ use vm::*;
 /// the machine.
 pub fn interpret_program(
     prg: Program,
-    initial_state: Option<InterpreterState>,
-) -> (Result<(), InterpreterError>, InterpreterState) {
+    initial_state: Option<State>,
+) -> (Result<(), InterpreterError>, State) {
     // // Use given initial state, or default
     let mut state = initial_state.unwrap_or_default();
 
