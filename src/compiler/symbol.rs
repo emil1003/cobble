@@ -23,7 +23,7 @@ pub fn strip_symbols(prg: &Program) -> Result<(Program, SymbolTable), SymbolErro
     // Stripped program length is <= input program
     let mut out: Program = Vec::with_capacity(prg.len());
 
-    let mut symbols: SymbolTable = HashMap::default();
+    let mut symbols: SymbolTable = HashMap::new();
     let mut pc = 0u16;
 
     for instr in prg {
@@ -35,7 +35,7 @@ pub fn strip_symbols(prg: &Program) -> Result<(Program, SymbolTable), SymbolErro
                 }
 
                 // Record symbol
-                symbols.insert(label.to_string(), pc);
+                symbols.insert(label.clone(), pc);
             }
             _ => {
                 out.push(instr.clone());
@@ -49,10 +49,10 @@ pub fn strip_symbols(prg: &Program) -> Result<(Program, SymbolTable), SymbolErro
 
 /// Getter for an address in symbol table.
 #[inline]
-fn lookup_address(symbol: &String, table: &SymbolTable) -> Result<u16, SymbolError> {
+fn lookup_address(symbol: &str, table: &SymbolTable) -> Result<u16, SymbolError> {
     match table.get(symbol) {
         Some(a) => Ok(*a),
-        None => Err(SymbolError::NoSuchSymbol(symbol.clone())),
+        None => Err(SymbolError::NoSuchSymbol(symbol.to_string())),
     }
 }
 
@@ -65,7 +65,7 @@ pub fn replace_symbols(prg: &Program, symbols: &SymbolTable) -> Result<Program, 
         match instr {
             Instr::Label(s) => {
                 // Input program not fully stripped
-                return Err(SymbolError::UnstrippedSymbol(s.clone()));
+                return Err(SymbolError::UnstrippedSymbol(s.to_string()));
             }
             Instr::Jmp {
                 imm: Op::Label(symbol),
