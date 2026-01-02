@@ -1,4 +1,8 @@
+use console::style;
+use std::{thread, time::Duration};
+
 use clap::{Args, Parser, Subcommand};
+use indicatif::ProgressBar;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -32,7 +36,78 @@ struct FilePaths {
 }
 
 fn main() {
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
+    match cli.command {
+        Some(Commands::Run(file_paths)) => run_program(&file_paths.in_path),
+        _ => unimplemented!(),
+    }
+}
+
+fn run_program(path: &str) {
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(Duration::from_millis(100));
+
+    // Load source file
+    pb.set_message(format!("{} Reading {}", style("[1/3]").bold().dim(), path));
+    let src = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            pb.finish_with_message(format!(
+                "{} {} while reading",
+                style("[1/3]").bold().dim(),
+                style("Error").red().bold(),
+            ));
+            println!("{}", e);
+            return;
+        }
+    };
+    thread::sleep(Duration::from_millis(250));
+
+    // Compile program
+    pb.set_message(format!(
+        "{} Compiling {}",
+        style("[2/3]").bold().dim(),
+        path
+    ));
+    let prg = match cobble::compiler::compile_program(&src) {
+        Ok(p) => p,
+        Err(e) => {
+            pb.finish_with_message(format!(
+                "{} {} while compiling",
+                style("[2/3]").bold().dim(),
+                style("Error").red().bold(),
+            ));
+            println!("{}", e);
+            return;
+        }
+    };
+    thread::sleep(Duration::from_millis(250));
+
+    // Interpret program
+    pb.set_message(format!(
+        "{} Interpreting {}",
+        style("[3/3]").bold().dim(),
+        path
+    ));
+    let (res, state) = cobble::interpreter::interpret_program(prg, None);
+    if let Err(e) = res {
+        pb.finish_with_message(format!(
+            "{} {} while interpreting",
+            style("[3/3]").bold().dim(),
+            style("Error").red().bold(),
+        ));
+        println!("{}", e);
+        return;
+    }
+    thread::sleep(Duration::from_millis(250));
+
+    pb.finish_with_message(format!(
+        "{} {}",
+        style("[3/3]").bold().dim(),
+        style("Done").green().bold()
+    ));
+
+    println!("{}", state);
 }
 
 #[test]
