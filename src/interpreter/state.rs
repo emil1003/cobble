@@ -1,6 +1,13 @@
 use std::fmt::{self, Error};
 
 use console::style;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum RegisterError {
+    #[error("No such register: {0}")]
+    NoSuchRegister(u8),
+}
 
 /// Collection of read-write registers
 #[derive(Default)]
@@ -21,14 +28,14 @@ impl Registers {
     /// Write a value to a register.
     /// Returns `Err` if no such register
     #[inline]
-    pub fn w(&mut self, reg: u8, v: u8) -> Result<(), ()> {
+    pub fn w(&mut self, reg: u8, v: u8) -> Result<(), RegisterError> {
         match reg {
             0 => Ok(()),
             1..=15 => {
                 self.0[(reg as usize) - 1] = v;
                 Ok(())
             }
-            _ => Err(()),
+            _ => Err(RegisterError::NoSuchRegister(reg)),
         }
     }
 }
