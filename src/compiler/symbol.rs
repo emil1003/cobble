@@ -98,39 +98,44 @@ pub fn replace_symbols(prg: &Program, symbols: &SymbolTable) -> Result<Program, 
     Ok(out)
 }
 
-#[test]
-fn test_strip_symbols() {
-    let prg = vec![Instr::Label("start".to_string()), Instr::Halt];
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let (stripped, symbols) = strip_symbols(&prg).unwrap();
-    assert_eq!(stripped.len(), 1);
-    assert_eq!(symbols.get("start").unwrap(), &0u16);
+    #[test]
+    fn test_strip_symbols() {
+        let prg = vec![Instr::Label("start".to_string()), Instr::Halt];
 
-    // Program with duplicate labels
-    let prg = vec![
-        Instr::Label("start".to_string()),
-        Instr::Label("start".to_string()),
-    ];
-    let res = strip_symbols(&prg);
-    assert!(res.is_err());
-}
+        let (stripped, symbols) = strip_symbols(&prg).unwrap();
+        assert_eq!(stripped.len(), 1);
+        assert_eq!(symbols.get("start").unwrap(), &0u16);
 
-#[test]
-fn test_replace_symbols() {
-    let prg = vec![
-        Instr::Jmp {
-            imm: Op::Label("start".to_string()),
-        },
-        Instr::Halt,
-    ];
-    let mut symbols: SymbolTable = HashMap::default();
-    symbols.insert("start".to_string(), 0);
+        // Program with duplicate labels
+        let prg = vec![
+            Instr::Label("start".to_string()),
+            Instr::Label("start".to_string()),
+        ];
+        let res = strip_symbols(&prg);
+        assert!(res.is_err());
+    }
 
-    let replaced = replace_symbols(&prg, &symbols).ok().unwrap();
+    #[test]
+    fn test_replace_symbols() {
+        let prg = vec![
+            Instr::Jmp {
+                imm: Op::Label("start".to_string()),
+            },
+            Instr::Halt,
+        ];
+        let mut symbols: SymbolTable = HashMap::default();
+        symbols.insert("start".to_string(), 0);
 
-    assert_eq!(replaced[0], Instr::Jmp { imm: Op::Imm12(0) });
+        let replaced = replace_symbols(&prg, &symbols).ok().unwrap();
 
-    // Unstripped program
-    let prg = vec![Instr::Label("start".to_string()), Instr::Halt];
-    assert!(replace_symbols(&prg, &symbols).err().is_some());
+        assert_eq!(replaced[0], Instr::Jmp { imm: Op::Imm12(0) });
+
+        // Unstripped program
+        let prg = vec![Instr::Label("start".to_string()), Instr::Halt];
+        assert!(replace_symbols(&prg, &symbols).err().is_some());
+    }
 }

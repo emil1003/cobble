@@ -49,36 +49,40 @@ pub fn interpret_program(
     )
 }
 
-#[test]
-fn test_interpret_sample_program() {
-    // 2 + 2
-    let prg = vec![
-        Instr::Addi {
-            rd: Op::Reg(1),
-            rs1: Op::Reg(0),
-            imm: Op::Imm8(2),
-        },
-        Instr::Addi {
-            rd: Op::Reg(2),
-            rs1: Op::Reg(0),
-            imm: Op::Imm8(2),
-        },
-        Instr::Add {
-            rd: Op::Reg(3),
-            rs1: Op::Reg(1),
-            rs2: Op::Reg(2),
-        },
-        Instr::Halt,
-    ];
-    let (status, state) = interpret_program(prg, None);
-    assert!(status.is_ok());
-    assert_eq!(state.regs.r(3).unwrap(), 4);
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_interpret_sample_program() {
+        // 2 + 2
+        let prg = vec![
+            Instr::Addi {
+                rd: Op::Reg(1),
+                rs1: Op::Reg(0),
+                imm: Op::Imm8(2),
+            },
+            Instr::Addi {
+                rd: Op::Reg(2),
+                rs1: Op::Reg(0),
+                imm: Op::Imm8(2),
+            },
+            Instr::Add {
+                rd: Op::Reg(3),
+                rs1: Op::Reg(1),
+                rs2: Op::Reg(2),
+            },
+            Instr::Halt,
+        ];
+        let (status, state) = interpret_program(prg, None);
+        assert!(status.is_ok());
+        assert_eq!(state.regs.r(3).unwrap(), 4);
+    }
 
-#[test]
-fn test_program_error() {
-    // Instruction out-of-bounds
-    let prg = vec![Instr::Jmp { imm: Op::Imm12(42) }, Instr::Halt];
-    let (status, _state) = interpret_program(prg, None);
-    assert!(status.is_err());
+    #[test]
+    fn test_program_error() {
+        // Instruction out-of-bounds
+        let prg = vec![Instr::Jmp { imm: Op::Imm12(42) }, Instr::Halt];
+        let (status, _state) = interpret_program(prg, None);
+        assert!(status.is_err());
+    }
 }

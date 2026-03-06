@@ -110,8 +110,13 @@ fn run_program(path: &str) {
     println!("{}", state);
 }
 
-#[test]
-fn test_verify_cli() {
-    use clap::CommandFactory;
-    Cli::command().debug_assert();
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_verify_cli() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
+    }
 }

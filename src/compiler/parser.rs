@@ -185,46 +185,51 @@ pub fn parse_program(src: &str) -> Result<Program, ParserError> {
     Ok(program)
 }
 
-#[test]
-fn test_parser() {
-    // Simple Halt
-    let input = "halt";
-    assert_eq!(parse_line(input).ok().unwrap(), ("", vec![Instr::Halt]));
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Basic addi r0, r0, 0
-    let input = "addi r0, r0, 0";
-    assert_eq!(
-        parse_line(input).ok().unwrap(),
-        (
-            "",
-            vec![Instr::Addi {
-                rd: Op::Reg(0),
-                rs1: Op::Reg(0),
-                imm: Op::Imm8(0),
-            }]
+    #[test]
+    fn test_parser() {
+        // Simple Halt
+        let input = "halt";
+        assert_eq!(parse_line(input).ok().unwrap(), ("", vec![Instr::Halt]));
+
+        // Basic addi r0, r0, 0
+        let input = "addi r0, r0, 0";
+        assert_eq!(
+            parse_line(input).ok().unwrap(),
+            (
+                "",
+                vec![Instr::Addi {
+                    rd: Op::Reg(0),
+                    rs1: Op::Reg(0),
+                    imm: Op::Imm8(0),
+                }]
+            )
+        );
+
+        // Malformed mv
+        let input = "mv r0, 0";
+        assert!(parse_line(input).err().is_some());
+
+        // Label
+        let input = "loop:";
+        assert_eq!(
+            parse_line(input).ok().unwrap(),
+            ("", vec![Instr::Label("loop".to_string())])
+        );
+
+        // Jump to label
+        let input = "jmp loop";
+        assert_eq!(
+            parse_line(input).ok().unwrap(),
+            (
+                "",
+                vec![Instr::Jmp {
+                    imm: Op::Label("loop".to_string())
+                }]
+            )
         )
-    );
-
-    // Malformed mv
-    let input = "mv r0, 0";
-    assert!(parse_line(input).err().is_some());
-
-    // Label
-    let input = "loop:";
-    assert_eq!(
-        parse_line(input).ok().unwrap(),
-        ("", vec![Instr::Label("loop".to_string())])
-    );
-
-    // Jump to label
-    let input = "jmp loop";
-    assert_eq!(
-        parse_line(input).ok().unwrap(),
-        (
-            "",
-            vec![Instr::Jmp {
-                imm: Op::Label("loop".to_string())
-            }]
-        )
-    )
+    }
 }

@@ -153,43 +153,48 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
     }
 }
 
-#[test]
-fn test_interpreter() {
-    let mut state = State::new();
-    // Basic instruction
-    let instr = Instr::Addi {
-        rd: Op::Reg(1),
-        rs1: Op::Reg(0),
-        imm: Op::Imm8(2),
-    };
-    assert!(interpret(&instr, &mut state).ok().unwrap().is_some());
-    assert_eq!(state.regs.r(1).unwrap(), 2);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Halting
-    let instr = Instr::Halt;
-    assert!(interpret(&instr, &mut State::new()).ok().unwrap().is_none());
+    #[test]
+    fn test_interpreter() {
+        let mut state = State::new();
+        // Basic instruction
+        let instr = Instr::Addi {
+            rd: Op::Reg(1),
+            rs1: Op::Reg(0),
+            imm: Op::Imm8(2),
+        };
+        assert!(interpret(&instr, &mut state).ok().unwrap().is_some());
+        assert_eq!(state.regs.r(1).unwrap(), 2);
 
-    // Branching
-    let instr = Instr::Jmp {
-        imm: Op::Imm12(0xf),
-    };
-    assert_eq!(interpret(&instr, &mut state).ok().unwrap(), Some(0xf));
-}
+        // Halting
+        let instr = Instr::Halt;
+        assert!(interpret(&instr, &mut State::new()).ok().unwrap().is_none());
 
-#[test]
-fn test_interpreter_errors() {
-    // Invalid operand
-    let instr = Instr::Mv {
-        rd: Op::Reg(0),
-        rs1: Op::Imm8(0),
-    };
-    assert!(interpret(&instr, &mut State::new()).err().is_some());
+        // Branching
+        let instr = Instr::Jmp {
+            imm: Op::Imm12(0xf),
+        };
+        assert_eq!(interpret(&instr, &mut state).ok().unwrap(), Some(0xf));
+    }
 
-    // Invalid register
-    let instr = Instr::Addi {
-        rd: Op::Reg(0),
-        rs1: Op::Reg(16),
-        imm: Op::Imm8(32),
-    };
-    assert!(interpret(&instr, &mut State::new()).err().is_some());
+    #[test]
+    fn test_interpreter_errors() {
+        // Invalid operand
+        let instr = Instr::Mv {
+            rd: Op::Reg(0),
+            rs1: Op::Imm8(0),
+        };
+        assert!(interpret(&instr, &mut State::new()).err().is_some());
+
+        // Invalid register
+        let instr = Instr::Addi {
+            rd: Op::Reg(0),
+            rs1: Op::Reg(16),
+            imm: Op::Imm8(32),
+        };
+        assert!(interpret(&instr, &mut State::new()).err().is_some());
+    }
 }
