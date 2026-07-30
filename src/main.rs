@@ -89,8 +89,8 @@ fn run_program(path: &str) {
         style("[3/3]").bold().dim(),
         path
     ));
-    let (res, state) = cobble::interpreter::interpret_program(prg, None);
-    if let Err(e) = res {
+    let (err, state, stats) = cobble::interpreter::interpret_program(prg, None);
+    if let Some(e) = err {
         pb.finish_with_message(format!(
             "{} {} while interpreting",
             style("[3/3]").bold().dim(),
@@ -107,6 +107,7 @@ fn run_program(path: &str) {
         style("Done").green().bold()
     ));
 
+    println!("Ran {} instructions", stats.interpreted);
     println!("{}", state);
 }
 
