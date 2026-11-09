@@ -20,18 +20,18 @@ pub enum InterpreterError {
     PCOutOfBounds(u16),
 }
 
-/// Does a wrapping add, with bool set if overflowed
+/// Performs a wrapping addition and returns a tuple containing the result and an overflow flag.
 #[inline]
-fn inbounds_add(a: u8, b: u8) -> (u8, bool) {
+fn add_with_overflow(a: u8, b: u8) -> (u8, bool) {
     match a.checked_add(b) {
         Some(s) => (s, false),
         None => (a.wrapping_add(b), true),
     }
 }
 
-/// Does a wrapping sub, with bool set if overflowed
+/// Performs a wrapping subtraction and returns a tuple containing the result and an overflow flag.
 #[inline]
-fn inbounds_sub(a: u8, b: u8) -> (u8, bool) {
+fn sub_with_overflow(a: u8, b: u8) -> (u8, bool) {
     match a.checked_sub(b) {
         Some(s) => (s, false),
         None => (a.wrapping_sub(b), true),
@@ -71,7 +71,7 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             imm: Op::Imm8(imm),
         } => {
             let a = state.regs.read_err(*rs1)?;
-            let (res, overflow) = inbounds_add(a, *imm);
+            let (res, overflow) = add_with_overflow(a, *imm);
             state.regs.write_err(*rd, res)?;
             state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
@@ -96,7 +96,7 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
-            let (res, overflow) = inbounds_add(a, b);
+            let (res, overflow) = add_with_overflow(a, b);
             state.regs.write_err(*rd, res)?;
             state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
@@ -108,7 +108,7 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
-            let (res, overflow) = inbounds_sub(a, b);
+            let (res, overflow) = sub_with_overflow(a, b);
             state.regs.write_err(*rd, res)?;
             state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
@@ -119,6 +119,75 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
         } => {
             let a = state.regs.read_err(*rs1)?;
             let res = !a;
+            state.regs.write_err(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::And {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            rs2: Op::Reg(rs2),
+        } => {
+            let a = state.regs.read_err(*rs1)?;
+            let b = state.regs.read_err(*rs2)?;
+            let res = a & b;
+            state.regs.write_err(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Or {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            rs2: Op::Reg(rs2),
+        } => {
+            let a = state.regs.read_err(*rs1)?;
+            let b = state.regs.read_err(*rs2)?;
+            let res = a | b;
+            state.regs.write_err(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Xor {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            rs2: Op::Reg(rs2),
+        } => {
+            let a = state.regs.read_err(*rs1)?;
+            let b = state.regs.read_err(*rs2)?;
+            let res = a ^ b;
+            state.regs.write_err(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Andi {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            imm: Op::Imm8(imm),
+        } => {
+            let a = state.regs.read_err(*rs1)?;
+            let res = a & imm;
+            state.regs.write_err(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Ori {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            imm: Op::Imm8(imm),
+        } => {
+            let a = state.regs.read_err(*rs1)?;
+            let res = a | imm;
+            state.regs.write_err(*rd, res)?;
+            state.flags = (res.eq(&0u8), false).into();
+            Ok(Some(state.pc + 1))
+        }
+        Instr::Xori {
+            rd: Op::Reg(rd),
+            rs1: Op::Reg(rs1),
+            imm: Op::Imm8(imm),
+        } => {
+            let a = state.regs.read_err(*rs1)?;
+            let res = a ^ imm;
             state.regs.write_err(*rd, res)?;
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
