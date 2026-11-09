@@ -60,15 +60,17 @@ impl RegisterAccess for Registers {
 /// Interprets an instruction, mutating a given VM state in the process.
 /// Returns the next PC address (does not set it), or `None` if the interpreter should halt.
 pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, InterpreterError> {
+    use {Instr::*, Op::*};
+
     match instr {
-        Instr::Halt => {
+        Halt => {
             state.flags = (true, false).into();
             Ok(None)
         }
-        Instr::Addi {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            imm: Op::Imm8(imm),
+        Addi {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            imm: Imm8(imm),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let (res, overflow) = add_with_overflow(a, *imm);
@@ -76,23 +78,23 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Mv {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
+        Mv {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
         } => {
             let a = state.regs.read_err(*rs1)?;
             state.regs.write_err(*rd, a)?;
             state.flags = (a.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Nop => {
+        Nop => {
             state.flags = (true, false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Add {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            rs2: Op::Reg(rs2),
+        Add {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            rs2: Reg(rs2),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
@@ -101,10 +103,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Sub {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            rs2: Op::Reg(rs2),
+        Sub {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            rs2: Reg(rs2),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
@@ -113,9 +115,9 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), overflow).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Not {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
+        Not {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let res = !a;
@@ -123,10 +125,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::And {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            rs2: Op::Reg(rs2),
+        And {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            rs2: Reg(rs2),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
@@ -135,10 +137,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Or {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            rs2: Op::Reg(rs2),
+        Or {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            rs2: Reg(rs2),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
@@ -147,10 +149,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Xor {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            rs2: Op::Reg(rs2),
+        Xor {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            rs2: Reg(rs2),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let b = state.regs.read_err(*rs2)?;
@@ -159,10 +161,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Andi {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            imm: Op::Imm8(imm),
+        Andi {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            imm: Imm8(imm),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let res = a & imm;
@@ -170,10 +172,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Ori {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            imm: Op::Imm8(imm),
+        Ori {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            imm: Imm8(imm),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let res = a | imm;
@@ -181,10 +183,10 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Xori {
-            rd: Op::Reg(rd),
-            rs1: Op::Reg(rs1),
-            imm: Op::Imm8(imm),
+        Xori {
+            rd: Reg(rd),
+            rs1: Reg(rs1),
+            imm: Imm8(imm),
         } => {
             let a = state.regs.read_err(*rs1)?;
             let res = a ^ imm;
@@ -192,26 +194,22 @@ pub fn interpret(instr: &Instr, state: &mut State) -> Result<Option<u16>, Interp
             state.flags = (res.eq(&0u8), false).into();
             Ok(Some(state.pc + 1))
         }
-        Instr::Jmp { imm: target } => match target {
-            Op::Imm12(imm) => {
+        Jmp { imm: target } => match target {
+            Imm12(imm) => {
                 // Flags are the same as res = 0
                 state.flags = (true, false).into();
                 Ok(Some(*imm))
             }
             _ => Err(InterpreterError::InvalidOperands(instr.clone())),
         },
-        Instr::Bz {
-            imm: Op::Imm12(imm),
-        } => {
+        Bz { imm: Imm12(imm) } => {
             if state.flags.zero {
                 Ok(Some(*imm))
             } else {
                 Ok(Some(state.pc + 1))
             }
         }
-        Instr::Bnz {
-            imm: Op::Imm12(imm),
-        } => {
+        Bnz { imm: Imm12(imm) } => {
             if state.flags.zero {
                 Ok(Some(state.pc + 1))
             } else {

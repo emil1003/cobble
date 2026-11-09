@@ -58,36 +58,38 @@ fn lookup_address(symbol: &str, table: &SymbolTable) -> Result<u16, SymbolError>
 
 /// Replaces symbols in operands with addresses from table.
 pub fn replace_symbols(prg: &Program, symbols: &SymbolTable) -> Result<Program, SymbolError> {
+    use Instr::*;
+
     // Resulting program length will be == input program length
     let mut out: Program = Vec::with_capacity(prg.len());
 
     for instr in prg {
         match instr {
-            Instr::Label(s) => {
+            Label(s) => {
                 // Input program not fully stripped
                 return Err(SymbolError::UnstrippedSymbol(s.to_string()));
             }
-            Instr::Jmp {
+            Jmp {
                 imm: Op::Label(symbol),
             } => {
                 let addr = lookup_address(symbol, symbols)?;
-                out.push(Instr::Jmp {
+                out.push(Jmp {
                     imm: Op::Imm12(addr),
                 })
             }
-            Instr::Bnz {
+            Bnz {
                 imm: Op::Label(symbol),
             } => {
                 let addr = lookup_address(symbol, symbols)?;
-                out.push(Instr::Bnz {
+                out.push(Bnz {
                     imm: Op::Imm12(addr),
                 })
             }
-            Instr::Bz {
+            Bz {
                 imm: Op::Label(symbol),
             } => {
                 let addr = lookup_address(symbol, symbols)?;
-                out.push(Instr::Bz {
+                out.push(Bz {
                     imm: Op::Imm12(addr),
                 })
             }
